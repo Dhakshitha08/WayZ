@@ -7,8 +7,6 @@ import { useRouter } from "next/navigation";
 import {
   User,
   Lock,
-  Moon,
-  Sun,
   Trash2,
   LogOut,
   Save,
@@ -17,25 +15,17 @@ import {
 export default function SettingsPage() {
   const router = useRouter();
 
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
+  const [username, setUsername] =
+    useState("");
+
+  const [email, setEmail] =
+    useState("");
+
   const [newPassword, setNewPassword] =
     useState("");
 
-  const [darkMode, setDarkMode] =
-    useState(true);
-
   useEffect(() => {
     getUser();
-
-    const savedTheme =
-      localStorage.getItem("theme");
-
-    if (savedTheme === "light") {
-      setDarkMode(false);
-    } else {
-      setDarkMode(true);
-    }
   }, []);
 
   const getUser = async () => {
@@ -50,18 +40,24 @@ export default function SettingsPage() {
 
     setEmail(user.email || "");
 
-    const { data } = await supabase
-      .from("profiles")
-      .select("username")
-      .eq("id", user.id)
-      .single();
+    const { data, error } =
+      await supabase
+        .from("profiles")
+        .select("username")
+        .eq("id", user.id)
+        .single();
 
     if (data) {
       setUsername(data.username);
     }
+
+    if (error) {
+      console.error(error);
+    }
   };
 
   const updateUsername = async () => {
+  try {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -71,7 +67,7 @@ export default function SettingsPage() {
     const { error } = await supabase
       .from("profiles")
       .update({
-        username,
+        username: username,
       })
       .eq("id", user.id);
 
@@ -80,10 +76,25 @@ export default function SettingsPage() {
       return;
     }
 
-    alert("Username updated successfully");
+    // save username locally
+    localStorage.setItem(
+      "wayz_username",
+      username
+    );
 
-    window.location.reload();
-  };
+    // notify dashboard instantly
+    window.dispatchEvent(
+      new StorageEvent("storage", {
+        key: "wayz_username",
+        newValue: username,
+      })
+    );
+
+    alert("Username updated successfully");
+  } catch (err) {
+    console.error(err);
+  }
+};
 
   const changePassword = async () => {
     if (!newPassword) {
@@ -129,9 +140,7 @@ export default function SettingsPage() {
       return;
     }
 
-    alert("Issue history cleared");
-
-    window.location.reload();
+    alert("History cleared successfully");
   };
 
   const logout = async () => {
@@ -140,52 +149,27 @@ export default function SettingsPage() {
     router.push("/auth/login");
   };
 
-  const toggleTheme = () => {
-    const currentTheme =
-      localStorage.getItem("theme");
-
-    if (currentTheme === "light") {
-      localStorage.setItem("theme", "dark");
-      setDarkMode(true);
-    } else {
-      localStorage.setItem("theme", "light");
-      setDarkMode(false);
-    }
-  };
-
   return (
-    <div
-      className={`min-h-screen p-8 transition-all duration-300 ${
-        darkMode
-          ? "bg-[#06110d] text-white"
-          : "bg-[#f4f7f5] text-black"
-      }`}
-    >
+    <div className="min-h-screen bg-[#06110d] text-white p-8">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-5xl font-bold mb-3">
-          Settings
-        </h1>
 
-        <p
-          className={`mb-10 ${
-            darkMode
-              ? "text-gray-400"
-              : "text-gray-600"
-          }`}
-        >
-          Manage your Wayz account and
-          preferences.
-        </p>
+        {/* HEADER */}
+        <div className="mb-10">
+          <h1 className="text-5xl font-bold">
+            Settings
+          </h1>
+
+          <p className="text-gray-400 mt-3">
+            Manage your account preferences
+            and security settings.
+          </p>
+        </div>
 
         <div className="space-y-8">
+
           {/* PROFILE */}
-          <div
-            className={`rounded-3xl border p-6 ${
-              darkMode
-                ? "bg-white/5 border-white/10"
-                : "bg-white border-black/10"
-            }`}
-          >
+          <div className="rounded-3xl bg-white/5 border border-white/10 p-6">
+
             <div className="flex items-center gap-3 mb-6">
               <User className="text-green-400" />
 
@@ -195,51 +179,30 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-4">
+
               <div>
-                <label
-                  className={`text-sm ${
-                    darkMode
-                      ? "text-gray-400"
-                      : "text-gray-600"
-                  }`}
-                >
+                <label className="text-sm text-gray-400">
                   Email
                 </label>
 
                 <input
                   value={email}
                   disabled
-                  className={`w-full mt-2 rounded-2xl px-4 py-4 border ${
-                    darkMode
-                      ? "bg-black/20 border-white/10 text-gray-400"
-                      : "bg-gray-100 border-black/10 text-gray-600"
-                  }`}
+                  className="w-full mt-2 bg-black/20 border border-white/10 rounded-2xl px-4 py-4 text-gray-500"
                 />
               </div>
 
               <div>
-                <label
-                  className={`text-sm ${
-                    darkMode
-                      ? "text-gray-400"
-                      : "text-gray-600"
-                  }`}
-                >
+                <label className="text-sm text-gray-400">
                   Username
                 </label>
 
                 <input
                   value={username}
                   onChange={(e) =>
-                    setUsername(
-                      e.target.value
-                    )
+                    setUsername(e.target.value)
                   }
-                  className={`w-full mt-2 rounded-2xl px-4 py-4 border outline-none ${
-                    darkMode
-                      ? "bg-black/20 border-white/10 text-white"
-                      : "bg-white border-black/10 text-black"
-                  }`}
+                  className="w-full mt-2 bg-black/20 border border-white/10 rounded-2xl px-4 py-4 outline-none focus:border-green-500"
                 />
               </div>
 
@@ -254,13 +217,8 @@ export default function SettingsPage() {
           </div>
 
           {/* PASSWORD */}
-          <div
-            className={`rounded-3xl border p-6 ${
-              darkMode
-                ? "bg-white/5 border-white/10"
-                : "bg-white border-black/10"
-            }`}
-          >
+          <div className="rounded-3xl bg-white/5 border border-white/10 p-6">
+
             <div className="flex items-center gap-3 mb-6">
               <Lock className="text-yellow-400" />
 
@@ -270,6 +228,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-4">
+
               <input
                 type="password"
                 placeholder="Enter new password"
@@ -279,11 +238,7 @@ export default function SettingsPage() {
                     e.target.value
                   )
                 }
-                className={`w-full rounded-2xl px-4 py-4 border outline-none ${
-                  darkMode
-                    ? "bg-black/20 border-white/10 text-white"
-                    : "bg-white border-black/10 text-black"
-                }`}
+                className="w-full bg-black/20 border border-white/10 rounded-2xl px-4 py-4 outline-none focus:border-yellow-500"
               />
 
               <button
@@ -295,50 +250,9 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* THEME */}
-          <div
-            className={`rounded-3xl border p-6 ${
-              darkMode
-                ? "bg-white/5 border-white/10"
-                : "bg-white border-black/10"
-            }`}
-          >
-            <div className="flex items-center gap-3 mb-6">
-              {darkMode ? (
-                <Moon className="text-blue-400" />
-              ) : (
-                <Sun className="text-orange-400" />
-              )}
-
-              <h2 className="text-2xl font-semibold">
-                Theme
-              </h2>
-            </div>
-
-            <button
-              onClick={toggleTheme}
-              className={`px-6 py-3 rounded-2xl transition ${
-                darkMode
-                  ? "bg-white/10 hover:bg-white/20"
-                  : "bg-black/10 hover:bg-black/20"
-              }`}
-            >
-              Switch to{" "}
-              {darkMode
-                ? "Light"
-                : "Dark"}{" "}
-              Mode
-            </button>
-          </div>
-
           {/* HISTORY */}
-          <div
-            className={`rounded-3xl border p-6 ${
-              darkMode
-                ? "bg-white/5 border-red-500/20"
-                : "bg-white border-red-200"
-            }`}
-          >
+          <div className="rounded-3xl bg-white/5 border border-red-500/20 p-6">
+
             <div className="flex items-center gap-3 mb-6">
               <Trash2 className="text-red-400" />
 
@@ -347,41 +261,24 @@ export default function SettingsPage() {
               </h2>
             </div>
 
-            <p
-              className={`mb-5 ${
-                darkMode
-                  ? "text-gray-400"
-                  : "text-gray-600"
-              }`}
-            >
-              Delete all reported issues,
-              AI analyses, and saved reports.
+            <p className="text-gray-400 mb-5">
+              Delete all previous reports,
+              AI analyses, and issue history.
             </p>
 
             <button
               onClick={clearHistory}
-              className="bg-red-500 hover:bg-red-600 transition px-6 py-3 rounded-2xl font-medium text-white"
+              className="bg-red-500 hover:bg-red-600 transition px-6 py-3 rounded-2xl font-medium"
             >
               Delete History
             </button>
           </div>
 
           {/* LOGOUT */}
-          <div
-            className={`rounded-3xl border p-6 ${
-              darkMode
-                ? "bg-white/5 border-white/10"
-                : "bg-white border-black/10"
-            }`}
-          >
+          <div className="rounded-3xl bg-white/5 border border-white/10 p-6">
+
             <div className="flex items-center gap-3 mb-6">
-              <LogOut
-                className={
-                  darkMode
-                    ? "text-gray-300"
-                    : "text-gray-700"
-                }
-              />
+              <LogOut className="text-gray-300" />
 
               <h2 className="text-2xl font-semibold">
                 Logout
@@ -390,15 +287,12 @@ export default function SettingsPage() {
 
             <button
               onClick={logout}
-              className={`px-6 py-3 rounded-2xl transition ${
-                darkMode
-                  ? "bg-white/10 hover:bg-white/20"
-                  : "bg-black/10 hover:bg-black/20"
-              }`}
+              className="bg-white/10 hover:bg-white/20 transition px-6 py-3 rounded-2xl"
             >
               Logout from Wayz
             </button>
           </div>
+
         </div>
       </div>
     </div>

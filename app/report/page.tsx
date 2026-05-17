@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-
+import { useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 
 export default function ReportPage() {
@@ -15,77 +15,188 @@ export default function ReportPage() {
   const [loading, setLoading] = useState(false);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
-  const handleSubmit = async () => {
-    try {
-      setLoading(true);
-      const position = await new Promise<GeolocationPosition>(
-      (resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject);
-      }
-    );
+  const [categories, setCategories] =useState<any[]>([]);
+  const [errorMessage, setErrorMessage] =useState("");
+  useEffect(() => {
+  getCategories();
+}, []);
 
-    const latitude = position.coords.latitude;
-    const longitude = position.coords.longitude;
-    console.log(latitude,longitude);
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+const getCategories = async () => {
+  const { data, error } = await supabase
+    .from("categories")
+    .select("*")
+    .order("name");
 
-      if (!user) {
-        alert("Please login first");
-        return;
-      }
-      let imageUrl = "";
-
-if (image) {
-  const fileName = `${Date.now()}-${image.name}`;
-
-  const { error: uploadError } = await supabase.storage
-    .from("report-images")
-    .upload(fileName, image);
-
-  if (uploadError) {
-    alert(uploadError.message);
-    return;
+  if (data) {
+    setCategories(data);
   }
 
-  const { data } = supabase.storage
-    .from("report-images")
-    .getPublicUrl(fileName);
-
-  imageUrl = data.publicUrl;
+  if (error) {
+    console.error(error);
+  }
+};
+const [customCategory, setCustomCategory] =
+  useState("");
+  const handleSubmit = async () => {
+  try {
+    // validation
+    if (!title.trim()) {
+  setErrorMessage(
+    "Issue title is required"
+  );
+  return;
 }
 
-      const { error } = await supabase.from("reports").insert([
-        {
-          title,
-          description,
-          category,
-          image_url:imageUrl,
-          status: "Active",
-          latitude,
-          longitude,
-          user_id: user.id,
-        },
-      ]);
+if (!description.trim()) {
+  setErrorMessage(
+    "Description is required"
+  );
+  return;
+}
 
-      if (error) {
-        alert(error.message);
+if (!category) {
+  setErrorMessage(
+    "Please select a category"
+  );
+  return;
+}
+
+if (
+  category === "Other" &&
+  !customCategory.trim()
+) {
+  setErrorMessage(
+    "Please enter custom category"
+  );
+  return;
+}
+
+    // custom category validation
+    if (
+      category === "Other" &&
+      !customCategory
+    ) {
+      alert(
+        "Please enter custom category"
+      );
+
+      return;
+    }
+
+    setLoading(true);
+
+    // location
+    const position =
+      await new Promise<GeolocationPosition>(
+        (resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            resolve,
+            reject
+          );
+        }
+      );
+
+    const latitude =
+      position.coords.latitude;
+
+    const longitude =
+      position.coords.longitude;
+
+    // user
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) {
+      alert("Please login first");
+      return;
+    }
+
+    // dynamic category
+    let finalCategory = category;
+
+    if (category === "Other") {
+      finalCategory = customCategory;
+
+      // insert new category
+      const { data: existingCategory } =
+  await supabase
+    .from("categories")
+    .select("*")
+    .ilike("name", customCategory)
+    .single();
+
+if (!existingCategory) {
+  await supabase
+    .from("categories")
+    .insert({
+      name: customCategory,
+    });
+}
+    }
+
+    // image upload
+    let imageUrl = "";
+
+    if (image) {
+      const fileName = `${Date.now()}-${image.name}`;
+
+      const { error: uploadError } =
+        await supabase.storage
+          .from("report-images")
+          .upload(fileName, image);
+
+      if (uploadError) {
+        alert(uploadError.message);
         return;
       }
 
-      alert("Report submitted successfully!");
+      const { data } = supabase.storage
+        .from("report-images")
+        .getPublicUrl(fileName);
 
-      router.push("/dashboard");
-
-    } catch (error) {
-      console.error(error);
-
-      alert("Something went wrong");
-    } finally {
-      setLoading(false);
+      imageUrl = data.publicUrl;
     }
-  };
+
+    // save report
+    const { data, error } = await supabase
+  .from("reports")
+  .insert([
+    {
+      title,
+      description,
+      category: finalCategory,
+      image_url: imageUrl,
+      status: "Active",
+      latitude,
+      longitude,
+      user_id: user.id,
+    },
+  ])
+  .select()
+  .single();
+
+    if (error) {
+      alert(error.message);
+      return;
+    }
+    localStorage.setItem(
+  "latest_report",
+  JSON.stringify(data)
+);
+    alert(
+      "Report submitted successfully!"
+    );
+
+    router.push("/dashboard");
+  } catch (error) {
+    console.error(error);
+
+    alert("Something went wrong");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-[#06110d] text-white flex items-center justify-center px-6">
@@ -104,14 +215,15 @@ if (image) {
           {/* TITLE */}
           <div>
             <label className="block mb-2 text-sm text-gray-300">
-              Issue Title
+              Issue Title*
             </label>
 
             <input
               type="text"
               placeholder="Example: Broken street light"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) =>{ setTitle(e.target.value);setErrorMessage("");}}
+
               className="w-full bg-[#0d1d18] border border-white/10 rounded-2xl px-4 py-4 outline-none focus:border-green-500"
             />
           </div>
@@ -119,13 +231,13 @@ if (image) {
           {/* DESCRIPTION */}
           <div>
             <label className="block mb-2 text-sm text-gray-300">
-              Description
+              Description*
             </label>
 
             <textarea
               placeholder="Describe the issue..."
               value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              onChange={(e) => {setDescription(e.target.value);setErrorMessage("");}}
               rows={5}
               className="w-full bg-[#0d1d18] border border-white/10 rounded-2xl px-4 py-4 outline-none focus:border-green-500"
             />
@@ -134,22 +246,55 @@ if (image) {
           {/* CATEGORY */}
           <div>
             <label className="block mb-2 text-sm text-gray-300">
-              Category
+              Category*
             </label>
 
             <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full bg-[#0d1d18] border border-white/10 rounded-2xl px-4 py-4 outline-none focus:border-green-500"
-            >
-              <option value="">Select category</option>
-              <option value="Plumbing">Plumbing</option>
-<option value="Electrical">Electrical</option>
-<option value="Cleaning">Cleaning</option>
-<option value="AC Repair">AC Repair</option>
-<option value="Carpentry">Carpentry</option>
-              <option value="Flooding">Flooding</option>
-            </select>
+  value={category}
+  onChange={(e) =>{
+    setCategory(e.target.value);setErrorMessage("");}
+  }
+  className="w-full bg-black/20 border border-white/10 rounded-2xl px-4 py-4"
+>
+  <option value="">
+    Select Category
+  </option>
+
+  {categories.map((item) => (
+    <option
+      key={item.id}
+      value={item.name}
+    >
+      {item.name}
+    </option>
+  ))}
+
+  <option value="Other">
+    Other
+  </option>
+</select>
+<div className="bg-green-500/5 border border-green-500/10 rounded-2xl p-4 mt-4">
+  <p className="text-green-400 text-sm font-medium">
+    AI Tip
+  </p>
+
+  <p className="text-gray-400 text-sm mt-2 leading-7">
+    Add clear descriptions and images for
+    better AI analysis and faster repair
+    recommendations.
+  </p>
+</div>
+{category === "Other" && (
+  <input
+    type="text"
+    placeholder="Enter new category"
+    value={customCategory}
+    onChange={(e) =>
+      setCustomCategory(e.target.value)
+    }
+    className="w-full mt-4 bg-black/20 border border-white/10 rounded-2xl px-4 py-4"
+  />
+)}
           </div>
           <div>
   <label className="block mb-2 text-sm text-gray-300">
@@ -168,6 +313,11 @@ if (image) {
   />
 </div>
           {/* BUTTON */}
+          {errorMessage && (
+  <div className="bg-red-500/10 border border-red-500/20 text-red-400 px-4 py-3 rounded-2xl">
+    {errorMessage}
+  </div>
+)}
           <button
             onClick={handleSubmit}
             disabled={loading}

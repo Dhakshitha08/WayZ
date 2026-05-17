@@ -20,6 +20,10 @@ import {
   CheckCircle2,
   LogOut,
   Sparkles,
+  ChartAreaIcon,
+  GrapeIcon,
+  GitGraph,
+  ChartBar,
 } from "lucide-react";
 const LiveMap = dynamic(
   () => import("@/components/LiveMap"),
@@ -35,40 +39,125 @@ export default function DashboardPage() {
   const [reports, setReports] = useState<any[]>([]);
   const [username, setUsername] = useState("User");
   const [theme, setTheme] = useState("dark");
+  const [latestReport, setLatestReport] =useState<any | null>(null);
 useEffect(() => {
   refreshDashboard();
 }, []);
+useEffect(() => {
+  const syncUsername = async () => {
+    await getProfile();
+  };
 
+  window.addEventListener(
+  "storage",
+  (event) => {
+    if (event.key === "wayz_username") {
+      setUsername(event.newValue || "User");
+    }
+  }
+);
+
+  return () => {
+    window.removeEventListener(
+      "storage",
+      syncUsername
+    );
+  };
+}, []);
+
+useEffect(() => {
+  const storedName =
+    localStorage.getItem("wayz_username");
+
+  if (storedName) {
+    setUsername(storedName);
+  }
+}, []);
+useEffect(() => {
+  const syncUsername = () => {
+    const storedName =
+      localStorage.getItem(
+        "wayz_username"
+      );
+
+    if (storedName) {
+      setUsername(storedName);
+    }
+
+    getProfile();
+  };
+
+  window.addEventListener(
+    "storage",
+    syncUsername
+  );
+
+  return () => {
+    window.removeEventListener(
+      "storage",
+      syncUsername
+    );
+  };
+}, []);
+useEffect(() => {
+  const storedReport =
+    localStorage.getItem("latest_report");
+
+  if (storedReport) {
+    setLatestReport(
+      JSON.parse(storedReport)
+    );
+
+    // clear after showing once
+    localStorage.removeItem(
+      "latest_report"
+    );
+  }
+}, []);
 const refreshDashboard = async () => {
   await getProfile();
   await getReports();
 };
 
 const getProfile = async () => {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (!user) {
-    router.push("/auth/login");
-    return;
-  }
+    if (!user) {
+      router.push("/auth/login");
+      return;
+    }
 
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("username")
-    .eq("id", user.id)
-    .single();
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("username")
+      .eq("id", user.id)
+      .single();
 
-  if (data) {
-    setUsername(data.username);
-  }
+    if (error) {
+      console.error(error);
+      return;
+    }
 
-  if (error) {
-    console.error(error);
+    if (data?.username) {
+      console.log(
+        "Fetched username:",
+        data.username
+      );
+
+      setUsername(data.username);
+
+      localStorage.setItem(
+        "wayz_username",
+        data.username
+      );
+    }
+  } catch (err) {
+    console.error(err);
   }
 };
-
 const getReports = async () => {
   const { data, error } = await supabase
     .from("reports")
@@ -136,13 +225,7 @@ const getReports = async () => {
   Recent Issues
 </button>
 
-{/* <button
-  onClick={() => router.push("/help")}
-  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition"
->
-  <MapPinned size={20} />
-  Nearby Help
-</button> */}
+
 
 <button
   onClick={() => router.push("/assistant")}
@@ -153,44 +236,21 @@ const getReports = async () => {
 </button>
 
 <button
+  onClick={() => router.push("/statistics")}
+  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition"
+>
+  <ChartBar size={20} />
+  Statistics
+</button>
+
+<button
   onClick={() => router.push("/settings")}
   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition"
 >
   <Settings size={20} />
   Settings
 </button>
-            {/* <button className="w-full flex items-center gap-3 bg-gradient-to-r from-green-500 to-emerald-700 px-4 py-3 rounded-2xl shadow-lg shadow-green-500/20">
-              <BarChart3 size={20} />
-              Dashboard
-            </button>
 
-            <button
-  onClick={() => router.push("/report")}
-  className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition"
->
-  <FileWarning size={20} />
-  Report New Problem
-</button>
-
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition">
-              <Clock3 size={20} />
-              Issue History
-            </button>
-
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition">
-              <Sparkles size={20} />
-              AI Assistant
-            </button>
-
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition">
-              <MapPinned size={20} />
-              Saved Locations
-            </button>
-
-            <button className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition">
-              <Settings size={20} />
-              Settings
-            </button> */}
           </div>
         </div>
 <div className="mt-10">
@@ -222,8 +282,9 @@ const getReports = async () => {
           </h3>
 
           <div className="mt-5 flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-green-400 to-emerald-700" />
-
+            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-green-400 to-emerald-700 flex items-center justify-center text-xl font-bold text-white">
+  {username?.charAt(0).toUpperCase()}
+</div>
             <div>
               <p className="font-medium">{username}</p>
               <p className="text-sm text-gray-400">Wayz User</p>
@@ -257,14 +318,16 @@ const getReports = async () => {
 
           <div className="flex items-center gap-5">
             <button className="relative p-3 rounded-full bg-white/5 hover:bg-white/10 transition">
-              <Bell size={22} />
+              {/* <Bell size={22} />
 
               <span className="absolute -top-1 -right-1 bg-green-500 text-xs w-5 h-5 rounded-full flex items-center justify-center">
                 3
-              </span>
+              </span> */}
             </button>
 
-            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-green-400 via-emerald-500 to-teal-600" />
+            <div className="w-12 h-12 rounded-full bg-gradient-to-r from-green-400 to-emerald-700 flex items-center justify-center text-xl font-bold text-white">
+  {username?.charAt(0).toUpperCase()}
+</div>
           </div>
         </div>
 <div className="mb-8 rounded-[32px] overflow-hidden border border-white/10 bg-gradient-to-br from-green-500/20 via-emerald-900/10 to-black/20 p-8 relative">
@@ -292,116 +355,75 @@ const getReports = async () => {
       Report New Problem
     </button>
   </div>
-</div>+
-        
-{/* SMART STATS */}
-<div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
-
-  {/* TOTAL PROBLEMS */}
-  <div className="rounded-3xl bg-white/5 border border-green-500/20 p-6 backdrop-blur-xl hover:border-green-400/40 transition">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-gray-400">
-          Problems Reported
-        </p>
-
-        <h2 className="text-4xl font-bold mt-3">
-          {reports.length}
-        </h2>
-      </div>
-
-      <div className="w-14 h-14 rounded-2xl bg-green-500/20 flex items-center justify-center">
-        <FileWarning className="text-green-400" />
-      </div>
-    </div>
-
-    <p className="text-green-400 text-sm mt-4">
-      Personal issue tracking active
-    </p>
-  </div>
-
-  {/* AI ANALYSIS */}
-  <div className="rounded-3xl bg-white/5 border border-emerald-500/20 p-6 backdrop-blur-xl hover:border-emerald-400/40 transition">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-gray-400">
-          AI Analyses Completed
-        </p>
-
-        <h2 className="text-4xl font-bold mt-3 text-emerald-400">
-          {reports.length}
-        </h2>
-      </div>
-
-      <div className="w-14 h-14 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
-        <CheckCircle2 className="text-emerald-400" />
-      </div>
-    </div>
-
-    <p className="text-emerald-400 text-sm mt-4">
-      Smart repair guidance generated
-    </p>
-  </div>
-
-  {/* REPAIR ASSISTANCE */}
-  <div className="rounded-3xl bg-white/5 border border-cyan-500/20 p-6 backdrop-blur-xl hover:border-cyan-400/40 transition">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-gray-400">
-          Repair Assistance
-        </p>
-
-        <h2 className="text-4xl font-bold mt-3 text-cyan-400">
-          {reports.length > 0 ? reports.length * 3 : 0}
-        </h2>
-      </div>
-
-      <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 flex items-center justify-center">
-        <MapPinned className="text-cyan-400" />
-      </div>
-    </div>
-
-    <p className="text-cyan-400 text-sm mt-4">
-      Nearby help suggestions generated
-    </p>
-  </div>
-
-  {/* ESTIMATED SAVINGS */}
-  <div className="rounded-3xl bg-white/5 border border-yellow-500/20 p-6 backdrop-blur-xl hover:border-yellow-400/40 transition">
-    <div className="flex items-center justify-between">
-      <div>
-        <p className="text-gray-400">
-          Estimated Savings
-        </p>
-
-        <h2 className="text-4xl font-bold mt-3 text-yellow-400">
-          ₹{reports.length * 750}
-        </h2>
-      </div>
-
-      <div className="w-14 h-14 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
-        <BarChart3 className="text-yellow-400" />
-      </div>
-    </div>
-
-    <p className="text-yellow-400 text-sm mt-4">
-      Early issue detection reduced repair costs
-    </p>
-  </div>
-
 </div>
         
-{reports[0] && (
-  <div className="mt-8">
-    <AIAnalysis
-  reportId={reports[0].id}
-  category={reports[0].category}
-  description={reports[0].description}
-/>
-  </div>
+{latestReport && (
+  <>
+    {/* AI ANALYSIS */}
+    <div className="mt-8">
+      <AIAnalysis
+        reportId={latestReport.id}
+        category={latestReport.category}
+        description={latestReport.description}
+      />
+    </div>
+
+    {/* SMART STATS */}
+    <div className="flex flex-col md:flex-row justify-center gap-6 mt-8">
+
+      {/* REPAIR ASSISTANCE */}
+      <div className="w-full md:w-[350px] rounded-3xl bg-white/5 border border-cyan-500/20 p-6">
+        <div className="flex items-center justify-between">
+
+          <div>
+            <p className="text-gray-400">
+              Repair Assistance
+            </p>
+
+            <h2 className="text-4xl font-bold mt-3 text-cyan-400">
+              3
+            </h2>
+          </div>
+
+          <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 flex items-center justify-center">
+            <MapPinned className="text-cyan-400" />
+          </div>
+        </div>
+
+        <p className="text-cyan-400 text-sm mt-4">
+          Nearby help suggestions generated
+        </p>
+      </div>
+
+      {/* SAVINGS */}
+      <div className="w-full md:w-[350px] rounded-3xl bg-white/5 border border-yellow-500/20 p-6">
+        <div className="flex items-center justify-between">
+
+          <div>
+            <p className="text-gray-400">
+              Estimated Savings
+            </p>
+
+            <h2 className="text-4xl font-bold mt-3 text-yellow-400">
+              ₹750
+            </h2>
+          </div>
+
+          <div className="w-14 h-14 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
+            <BarChart3 className="text-yellow-400" />
+          </div>
+        </div>
+
+        <p className="text-yellow-400 text-sm mt-4">
+          Early issue detection reduced repair costs
+        </p>
+      </div>
+
+    </div>
+  </>
 )}
+
       </main>
     </div>
-    
   );
 }

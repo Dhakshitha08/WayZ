@@ -49,9 +49,35 @@ Return ONLY valid JSON.
       });
 
     const raw =
-      completion.choices[0].message.content || "{}";
+  completion.choices[0].message.content || "{}";
 
-    const aiResult = JSON.parse(raw);
+console.log("RAW AI RESPONSE:", raw);
+
+let aiResult;
+
+try {
+  // remove markdown formatting if exists
+  const cleaned = raw
+    .replace(/```json/g, "")
+    .replace(/```/g, "")
+    .trim();
+
+  aiResult = JSON.parse(cleaned);
+
+} catch (parseError) {
+  console.error(
+    "JSON Parse Error:",
+    parseError
+  );
+
+  aiResult = {
+    problem: "Unable to analyze issue",
+    solution:
+      "AI response formatting failed.",
+    estimated_cost: "Unknown",
+    severity: "Medium",
+  };
+}
 
     // SAVE TO SUPABASE
     const { error } = await supabase
