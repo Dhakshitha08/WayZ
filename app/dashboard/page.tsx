@@ -37,10 +37,50 @@ const Map = dynamic(() => import("@/components/Map"), {
 export default function DashboardPage() {
   const router = useRouter();
   const [reports, setReports] = useState<any[]>([]);
+  const [nearbyCount, setNearbyCount] =
+  useState(0);
+
+const [analysis, setAnalysis] =
+  useState<any | null>(null);
   const [username, setUsername] = useState("User");
   const [theme, setTheme] = useState("dark");
   const [latestReport, setLatestReport] =useState<any | null>(null);
+ const [loading, setLoading] =useState(true);
+
+const [user, setUser] =useState<any>(null);
 useEffect(() => {
+  const getSession = async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    if (session) {
+      setUser(session.user);
+      setLoading(false);
+    }
+  };
+
+  getSession();
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange(
+    (_event, session) => {
+      if (session) {
+        setUser(session.user);
+      } else {
+        router.push("/auth/login");
+      }
+
+      setLoading(false);
+    }
+  );
+
+  return () => {
+    subscription.unsubscribe();
+  };
+}, [router]);
+  useEffect(() => {
   refreshDashboard();
 }, []);
 useEffect(() => {
@@ -99,21 +139,16 @@ useEffect(() => {
     );
   };
 }, []);
-useEffect(() => {
-  const storedReport =
-    localStorage.getItem("latest_report");
+// useEffect(() => {
+//   const storedReport =
+//     localStorage.getItem("latest_report");
 
-  if (storedReport) {
-    setLatestReport(
-      JSON.parse(storedReport)
-    );
-
-    // clear after showing once
-    localStorage.removeItem(
-      "latest_report"
-    );
-  }
-}, []);
+//   if (storedReport) {
+//     setLatestReport(
+//       JSON.parse(storedReport)
+//     );
+//   }
+// }, []);
 const refreshDashboard = async () => {
   await getProfile();
   await getReports();
@@ -125,10 +160,8 @@ const getProfile = async () => {
       data: { user },
     } = await supabase.auth.getUser();
 
-    if (!user) {
-      router.push("/auth/login");
-      return;
-    }
+    if (!user){ router.push("/auth/login");return;}
+
 
     const { data, error } = await supabase
       .from("profiles")
@@ -159,26 +192,68 @@ const getProfile = async () => {
   }
 };
 const getReports = async () => {
-  const { data, error } = await supabase
-    .from("reports")
-    .select("*")
-    .order("created_at", { ascending: false });
+  try {
+    // CURRENT USER
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (data) {
-    setReports(data);
-  }
+   if (!user){ router.push("/auth/login");return;}
 
-  if (error) {
-    console.error(error);
+    // FETCH ONLY CURRENT USER REPORTS
+    const { data, error } = await supabase
+      .from("reports")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", {
+        ascending: false,
+      });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    // SAVE REPORTS
+    setReports(data || []);
+    if (data && data.length > 0) {
+  setLatestReport(data[0]);
+}
+    // IMPORTANT:
+    // ONLY RESET IF USER HAS NO REPORTS
+    if (!data || data.length === 0) {
+      setLatestReport(null);
+      setAnalysis(null);
+      setNearbyCount(0);
+    }
+
+  } catch (err) {
+    console.error(err);
   }
 };
+  // const handleLogout = async () => {
+  //   await supabase.auth.signOut();
 
+  //   router.push("/auth/login");
+  // };
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+  localStorage.removeItem("latest_report");
+  localStorage.removeItem("wayz_username");
 
-    router.push("/auth/login");
-  };
+  setLatestReport(null);
+  setReports([]);
 
+  await supabase.auth.signOut();
+
+  router.push("/auth/login");
+};
+if (loading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-black text-white">
+      Loading...
+    </div>
+  );
+}
   return (
     <div className="min-h-screen bg-[#06110d] text-white flex">
       {/* SIDEBAR */}
@@ -235,13 +310,13 @@ const getReports = async () => {
   AI Assistant
 </button>
 
-<button
+{/* <button
   onClick={() => router.push("/statistics")}
   className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl hover:bg-white/5 transition"
 >
   <ChartBar size={20} />
   Statistics
-</button>
+</button> */}
 
 <button
   onClick={() => router.push("/settings")}
@@ -372,7 +447,7 @@ const getReports = async () => {
     <div className="flex flex-col md:flex-row justify-center gap-6 mt-8">
 
       {/* REPAIR ASSISTANCE */}
-      <div className="w-full md:w-[350px] rounded-3xl bg-white/5 border border-cyan-500/20 p-6">
+      {/* <div className="w-full md:w-[350px] rounded-3xl bg-white/5 border border-cyan-500/20 p-6">
         <div className="flex items-center justify-between">
 
           <div>
@@ -381,8 +456,8 @@ const getReports = async () => {
             </p>
 
             <h2 className="text-4xl font-bold mt-3 text-cyan-400">
-              3
-            </h2>
+  {nearbyCount}
+</h2>
           </div>
 
           <div className="w-14 h-14 rounded-2xl bg-cyan-500/20 flex items-center justify-center">
@@ -393,10 +468,10 @@ const getReports = async () => {
         <p className="text-cyan-400 text-sm mt-4">
           Nearby help suggestions generated
         </p>
-      </div>
+      </div> */}
 
       {/* SAVINGS */}
-      <div className="w-full md:w-[350px] rounded-3xl bg-white/5 border border-yellow-500/20 p-6">
+      {/* <div className="w-full md:w-[350px] rounded-3xl bg-white/5 border border-yellow-500/20 p-6">
         <div className="flex items-center justify-between">
 
           <div>
@@ -405,8 +480,9 @@ const getReports = async () => {
             </p>
 
             <h2 className="text-4xl font-bold mt-3 text-yellow-400">
-              ₹750
-            </h2>
+  ₹
+  {analysis?.estimated_savings || 0}
+</h2>
           </div>
 
           <div className="w-14 h-14 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
@@ -417,7 +493,7 @@ const getReports = async () => {
         <p className="text-yellow-400 text-sm mt-4">
           Early issue detection reduced repair costs
         </p>
-      </div>
+      </div> */}
 
     </div>
   </>

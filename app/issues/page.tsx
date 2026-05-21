@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { useRouter } from "next/navigation";
 
 import {
   CalendarDays,
@@ -21,14 +22,27 @@ export default function IssuesPage() {
   }, []);
 
   const getReports = async () => {
-    const { data, error } = await supabase
-      .from("reports")
-      .select("*")
-      .order("created_at", { ascending: false });
+    
+const {
+  data: { user },
+} = await supabase.auth.getUser();
 
+if (!user) {
+  router.push("/auth/login");
+  return;
+}
+
+const { data, error } = await supabase
+  .from("reports")
+  .select("*")
+  .eq("user_id", user.id)
+  .order("created_at", {
+    ascending: false,
+  });
     if (data) {
-      setReports(data);
-    }
+  console.log("LATEST REPORTS:", data);
+  setReports(data);
+}
 
     if (error) {
       console.error(error);
@@ -131,11 +145,14 @@ export default function IssuesPage() {
 
                   {/* VIEW AI */}
                   <button
-                    onClick={() =>
-                      setExpandedId(
-                        isOpen ? null : report.id
-                      )
-                    }
+                    onClick={async () => {
+  if (isOpen) {
+    setExpandedId(null);
+  } else {
+    await getReports();
+    setExpandedId(report.id);
+  }
+}}
                     className="px-6 py-4 rounded-2xl bg-white/10 hover:bg-white/20 transition font-medium flex items-center gap-3"
                   >
                     <Sparkles size={20} />
@@ -162,7 +179,7 @@ export default function IssuesPage() {
                       </div>
 
                       <p className="text-yellow-300 text-lg">
-                        {report.severity || "Moderate"}
+                        {report.severity ?? "Not Available"}
                       </p>
                     </div>
 
@@ -176,7 +193,7 @@ export default function IssuesPage() {
                       </div>
 
                       <p className="text-green-300 text-lg">
-                        {report.estimated_cost || "₹500 - ₹1500"}
+                        ₹{report.estimated_cost ?? "Not Available"}
                       </p>
                     </div>
                   </div>
@@ -188,22 +205,38 @@ export default function IssuesPage() {
                     </h3>
 
                     <div className="text-gray-300 leading-8 whitespace-pre-wrap">
-                      {report.ai_analysis ||
-                        "AI analysis not available yet."}
+                      ₹{report.estimated_cost ?? "Not Available"}
                     </div>
                   </div>
 
                   {/* REPAIR STEPS */}
-                  <div className="mt-6 rounded-3xl bg-white/5 border border-white/10 p-7">
-                    <h3 className="text-2xl font-semibold mb-5">
-                      Suggested Repair Steps
-                    </h3>
+<div className="mt-6 rounded-3xl bg-white/5 border border-white/10 p-7">
+  <h3 className="text-2xl font-semibold mb-5">
+    Suggested Repair Steps
+  </h3>
 
-                    <div className="text-gray-300 leading-8 whitespace-pre-wrap">
-                      {report.repair_steps ||
-                        "No repair steps available."}
-                    </div>
-                  </div>
+  {Array.isArray(report.repair_steps) ? (
+    <ul className="space-y-4">
+      {report.repair_steps.map(
+        (
+          step: string,
+          index: number
+        ) => (
+          <li
+            key={index}
+            className="bg-black/20 rounded-2xl px-5 py-4 border border-white/10"
+          >
+            {step}
+          </li>
+        )
+      )}
+    </ul>
+  ) : (
+    <p className="text-gray-400">
+      No repair steps available.
+    </p>
+  )}
+</div>
                 </div>
               )}
             </div>

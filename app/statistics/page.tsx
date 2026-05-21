@@ -11,6 +11,9 @@ import {
   Wrench,
   TrendingUp,
   Activity,
+  AlertTriangle,
+  ShieldAlert,
+  Sparkles,
 } from "lucide-react";
 
 export default function StatisticsPage() {
@@ -37,7 +40,10 @@ export default function StatisticsPage() {
       const { data, error } = await supabase
         .from("reports")
         .select("*")
-        .eq("user_id", user.id);
+        .eq("user_id", user.id)
+        .order("created_at", {
+          ascending: false,
+        });
 
       if (error) {
         console.error(error);
@@ -52,21 +58,89 @@ export default function StatisticsPage() {
     }
   };
 
+  /* ---------------- REAL DATA ---------------- */
+
   const totalReports = reports.length;
 
-  const resolvedByAI = reports.length;
+  const resolvedByAI = reports.filter(
+    (r) => r.ai_analysis
+  ).length;
 
-  const repairAssistance =
-    reports.length * 3;
+  const totalSavings = reports.reduce(
+    (sum, item) =>
+      sum + Number(item.estimated_savings || 0),
+    0
+  );
 
-  const estimatedSavings =
-    reports.length * 750;
+  const totalRepairServices = reports.filter(
+    (r) => r.service_type
+  ).length;
 
-  const categoriesCount = [
-    ...new Set(
-      reports.map((item) => item.category)
-    ),
-  ].length;
+  const categories = reports.map(
+    (r) => r.category
+  );
+
+  const uniqueCategories = [
+    ...new Set(categories),
+  ];
+
+  const categoriesCount =
+    uniqueCategories.length;
+
+  const latestIssue =
+    reports[0]?.title || "No reports";
+
+  const highSeverity = reports.filter(
+    (r) =>
+      r.severity === "High"
+  ).length;
+
+  const criticalSeverity = reports.filter(
+    (r) =>
+      r.severity === "Critical"
+  ).length;
+
+  const totalCost = reports.reduce(
+    (sum, item) =>
+      sum + Number(item.estimated_cost || 0),
+    0
+  );
+
+  const avgRepairCost =
+    resolvedByAI > 0
+      ? Math.round(totalCost / resolvedByAI)
+      : 0;
+
+  const avgSavings =
+    resolvedByAI > 0
+      ? Math.round(totalSavings / resolvedByAI)
+      : 0;
+
+  const successRate =
+    totalReports > 0
+      ? Math.round(
+          (resolvedByAI / totalReports) * 100
+        )
+      : 0;
+
+  /* MOST REPORTED CATEGORY */
+
+  const categoryFrequency: any = {};
+
+  categories.forEach((cat) => {
+    categoryFrequency[cat] =
+      (categoryFrequency[cat] || 0) + 1;
+  });
+
+  const mostReportedCategory =
+    Object.keys(categoryFrequency).reduce(
+      (a, b) =>
+        categoryFrequency[a] >
+        categoryFrequency[b]
+          ? a
+          : b,
+      Object.keys(categoryFrequency)[0]
+    ) || "N/A";
 
   return (
     <div className="min-h-screen bg-[#06110d] text-white p-8">
@@ -82,8 +156,7 @@ export default function StatisticsPage() {
         </h1>
 
         <p className="text-gray-400 mt-4 text-lg">
-          Monitor your issue reports,
-          AI resolutions, and repair insights.
+          Real-time insights from your reported issues and AI analysis.
         </p>
       </div>
 
@@ -95,11 +168,11 @@ export default function StatisticsPage() {
         </div>
       ) : (
         <>
-          {/* STATS GRID */}
+          {/* MAIN STATS */}
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
 
-            {/* TOTAL REPORTS */}
-            <div className="rounded-3xl bg-white/5 border border-green-500/20 p-6 backdrop-blur-xl">
+            {/* TOTAL ISSUES */}
+            <div className="rounded-3xl bg-white/5 border border-green-500/20 p-6">
               <div className="flex items-center justify-between">
 
                 <div>
@@ -113,7 +186,10 @@ export default function StatisticsPage() {
                 </div>
 
                 <div className="w-16 h-16 rounded-2xl bg-green-500/20 flex items-center justify-center">
-                  <FileWarning className="text-green-400" size={30} />
+                  <FileWarning
+                    className="text-green-400"
+                    size={30}
+                  />
                 </div>
               </div>
 
@@ -122,8 +198,8 @@ export default function StatisticsPage() {
               </p>
             </div>
 
-            {/* AI RESOLVED */}
-            <div className="rounded-3xl bg-white/5 border border-emerald-500/20 p-6 backdrop-blur-xl">
+            {/* AI RESOLUTION */}
+            <div className="rounded-3xl bg-white/5 border border-emerald-500/20 p-6">
               <div className="flex items-center justify-between">
 
                 <div>
@@ -137,7 +213,10 @@ export default function StatisticsPage() {
                 </div>
 
                 <div className="w-16 h-16 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
-                  <CheckCircle2 className="text-emerald-400" size={30} />
+                  <CheckCircle2
+                    className="text-emerald-400"
+                    size={30}
+                  />
                 </div>
               </div>
 
@@ -146,8 +225,8 @@ export default function StatisticsPage() {
               </p>
             </div>
 
-            {/* REPAIR ASSISTANCE */}
-            <div className="rounded-3xl bg-white/5 border border-cyan-500/20 p-6 backdrop-blur-xl">
+            {/* REPAIR SERVICES */}
+            <div className="rounded-3xl bg-white/5 border border-cyan-500/20 p-6">
               <div className="flex items-center justify-between">
 
                 <div>
@@ -156,22 +235,25 @@ export default function StatisticsPage() {
                   </p>
 
                   <h2 className="text-5xl font-bold mt-4 text-cyan-400">
-                    {repairAssistance}
+                    {totalRepairServices}
                   </h2>
                 </div>
 
                 <div className="w-16 h-16 rounded-2xl bg-cyan-500/20 flex items-center justify-center">
-                  <Wrench className="text-cyan-400" size={30} />
+                  <Wrench
+                    className="text-cyan-400"
+                    size={30}
+                  />
                 </div>
               </div>
 
               <p className="text-cyan-400 text-sm mt-5">
-                Nearby help suggestions generated
+                Nearby repair services detected
               </p>
             </div>
 
             {/* SAVINGS */}
-            <div className="rounded-3xl bg-white/5 border border-yellow-500/20 p-6 backdrop-blur-xl">
+            <div className="rounded-3xl bg-white/5 border border-yellow-500/20 p-6">
               <div className="flex items-center justify-between">
 
                 <div>
@@ -180,112 +262,196 @@ export default function StatisticsPage() {
                   </p>
 
                   <h2 className="text-5xl font-bold mt-4 text-yellow-400">
-                    ₹{estimatedSavings}
+                    ₹{totalSavings}
                   </h2>
                 </div>
 
                 <div className="w-16 h-16 rounded-2xl bg-yellow-500/20 flex items-center justify-center">
-                  <IndianRupee className="text-yellow-400" size={30} />
+                  <IndianRupee
+                    className="text-yellow-400"
+                    size={30}
+                  />
                 </div>
               </div>
 
               <p className="text-yellow-400 text-sm mt-5">
-                Early issue detection reduced costs
+                Savings from early detection
               </p>
             </div>
           </div>
 
-          {/* EXTRA INSIGHTS */}
+          {/* INSIGHTS */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-10">
 
-            {/* CATEGORY INSIGHTS */}
+            {/* ISSUE INSIGHTS */}
             <div className="rounded-3xl bg-white/5 border border-white/10 p-8">
-              <div className="flex items-center gap-3 mb-6">
+
+              <div className="flex items-center gap-3 mb-8">
                 <TrendingUp className="text-pink-400" />
 
                 <h2 className="text-2xl font-semibold">
-                  Insights
+                  Issue Insights
                 </h2>
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-6">
 
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between">
                   <p className="text-gray-400">
-                    Unique Categories Reported
+                    Most Reported Category
                   </p>
 
-                  <p className="text-2xl font-bold text-pink-400">
+                  <p className="text-pink-400 font-bold text-xl">
+                    {mostReportedCategory}
+                  </p>
+                </div>
+
+                <div className="flex justify-between">
+                  <p className="text-gray-400">
+                    Unique Categories
+                  </p>
+
+                  <p className="text-green-400 font-bold text-xl">
                     {categoriesCount}
                   </p>
                 </div>
 
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between">
                   <p className="text-gray-400">
-                    Average Savings Per Report
+                    Critical Issues
                   </p>
 
-                  <p className="text-2xl font-bold text-green-400">
-                    ₹750
+                  <p className="text-red-400 font-bold text-xl">
+                    {criticalSeverity}
                   </p>
                 </div>
 
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between">
                   <p className="text-gray-400">
-                    AI Assistance Accuracy
+                    High Severity Issues
                   </p>
 
-                  <p className="text-2xl font-bold text-cyan-400">
-                    98%
+                  <p className="text-orange-400 font-bold text-xl">
+                    {highSeverity}
                   </p>
                 </div>
 
               </div>
             </div>
 
-            {/* ACTIVITY */}
+            {/* USER ACTIVITY */}
             <div className="rounded-3xl bg-white/5 border border-white/10 p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <Activity className="text-orange-400" />
+
+              <div className="flex items-center gap-3 mb-8">
+                <Activity className="text-cyan-400" />
 
                 <h2 className="text-2xl font-semibold">
-                  User Activity
+                  AI & User Activity
                 </h2>
               </div>
 
-              <div className="space-y-5">
+              <div className="space-y-6">
 
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between">
                   <p className="text-gray-400">
-                    Reports Submitted
+                    Resolution Success Rate
                   </p>
 
-                  <p className="text-2xl font-bold text-orange-400">
-                    {totalReports}
+                  <p className="text-cyan-400 font-bold text-xl">
+                    {successRate}%
                   </p>
                 </div>
 
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between">
                   <p className="text-gray-400">
-                    Active Repairs Suggested
+                    Average Repair Cost
                   </p>
 
-                  <p className="text-2xl font-bold text-cyan-400">
-                    {repairAssistance}
+                  <p className="text-yellow-400 font-bold text-xl">
+                    ₹{avgRepairCost}
                   </p>
                 </div>
 
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between">
                   <p className="text-gray-400">
-                    Community Impact
+                    Latest Issue Reported
                   </p>
 
-                  <p className="text-2xl font-bold text-green-400">
-                    High
+                  <p className="text-green-400 font-bold text-xl">
+                    {latestIssue}
+                  </p>
+                </div>
+
+                <div className="flex justify-between">
+                  <p className="text-gray-400">
+                    Service Recommendations
+                  </p>
+
+                  <p className="text-pink-400 font-bold text-xl">
+                    {totalRepairServices}
                   </p>
                 </div>
 
               </div>
+            </div>
+
+          </div>
+
+          {/* EXTRA REAL ANALYTICS */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-10">
+
+            <div className="rounded-3xl bg-white/5 border border-red-500/20 p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <AlertTriangle className="text-red-400" />
+
+                <h3 className="text-xl font-semibold">
+                  Response Monitor
+                </h3>
+              </div>
+
+              <p className="text-5xl font-bold text-red-400">
+                {resolvedByAI}
+              </p>
+
+              <p className="text-gray-400 mt-4">
+                AI analyses completed successfully for submitted reports.
+              </p>
+            </div>
+
+            <div className="rounded-3xl bg-white/5 border border-green-500/20 p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <Sparkles className="text-green-400" />
+
+                <h3 className="text-xl font-semibold">
+                  Savings Analysis
+                </h3>
+              </div>
+
+              <p className="text-5xl font-bold text-green-400">
+                ₹{avgSavings}
+              </p>
+
+              <p className="text-gray-400 mt-4">
+                Average estimated savings per reported issue.
+              </p>
+            </div>
+
+            <div className="rounded-3xl bg-white/5 border border-cyan-500/20 p-6">
+              <div className="flex items-center gap-3 mb-5">
+                <ShieldAlert className="text-cyan-400" />
+
+                <h3 className="text-xl font-semibold">
+                  Service Tracker
+                </h3>
+              </div>
+
+              <p className="text-5xl font-bold text-cyan-400">
+                {uniqueCategories.length}
+              </p>
+
+              <p className="text-gray-400 mt-4">
+                Repair service categories identified by AI recommendations.
+              </p>
             </div>
 
           </div>

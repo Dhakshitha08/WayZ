@@ -220,7 +220,7 @@ if (!existingCategory) {
 
             <input
               type="text"
-              placeholder="Example: Broken street light"
+              placeholder="Example: TV Repair"
               value={title}
               onChange={(e) =>{ setTitle(e.target.value);setErrorMessage("");}}
 

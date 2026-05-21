@@ -44,7 +44,14 @@ export default function LoginForm() {
       setLoading(false);
     }
   };
-
+const handleGoogleLogin = async () => {
+  await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo: "http://localhost:3000/dashboard",
+    },
+  });
+};
   return (
     <div className="w-full rounded-3xl bg-white p-8 shadow-xl border border-emerald-50">
 
@@ -59,9 +66,10 @@ export default function LoginForm() {
       </div>
 
       {/* GOOGLE BUTTON */}
-      <Button
+      {/* <Button
         variant="outline"
         className="w-full h-12 rounded-xl mb-5 border-emerald-100 hover:bg-emerald-50 flex items-center justify-center gap-3 text-gray-700"
+        onClick={handleGoogleLogin}
       >
         <img
           src="https://www.svgrepo.com/show/475656/google-color.svg"
@@ -70,16 +78,16 @@ export default function LoginForm() {
         />
 
         Continue with Google
-      </Button>
+      </Button> */}
 
       {/* DIVIDER */}
-      <div className="relative my-6">
+      {/* <div className="relative my-6">
         <div className="border-t border-gray-200"></div>
 
         <span className="absolute left-1/2 top-[-12px] -translate-x-1/2 bg-white px-3 text-sm text-gray-500">
           OR
         </span>
-      </div>
+      </div> */}
 
       {/* FORM */}
       <form
