@@ -1,27 +1,13 @@
 # 🏠 WayZ - Smart Home Problem Solver
 
-<div align="center">
-
 **Report • Connect • Resolve**
-
-![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=flat-square)
-![Version](https://img.shields.io/badge/Version-0.1.0-blue?style=flat-square)
-![License](https://img.shields.io/badge/License-Private-red?style=flat-square)
-![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square)
-![React](https://img.shields.io/badge/React-19.2.4-61dafb?style=flat-square)
-![Next.js](https://img.shields.io/badge/Next.js-16.2.6-black?style=flat-square)
 
 *An AI-powered platform for reporting household issues and connecting with professional repair services*
 
-[Features](#-features) • [Tech Stack](#-tech-stack) • [Installation](#-installation) • [Usage](#-usage) • [Contributing](#-support)
-
-</div>
-
----
 
 ## 🎯 Overview
 
-**WayZ** is an intelligent household problem management platform that harnesses the power of AI to help you identify, analyze, and resolve everyday home issues. Whether it's a leaky faucet, broken appliance, or structural concern, WayZ provides smart solutions and connects you with vetted professionals in your area.
+**WayZ** is an intelligent  problem management platform that harnesses the power of AI to help you identify, analyze, and resolve everyday home issues. Whether it's a leaky faucet, broken appliance, or structural concern, WayZ provides smart solutions and connects you with vetted professionals in your area.
 
 ### 🌟 Why WayZ?
 - ⚡ **Instant AI Analysis** - Get intelligent insights about your household problems
@@ -34,9 +20,6 @@
 
 ## ✨ Features
 
-<table>
-<tr>
-<td width="50%">
 
 ### 🔐 Authentication & Profiles
 - Secure user registration and login
@@ -50,8 +33,6 @@
 - Detailed description support
 - Timestamp tracking
 
-</td>
-<td width="50%">
 
 ### 🤖 AI-Powered Analysis
 - OpenAI integration for smart insights
@@ -65,11 +46,6 @@
 - Nearby services discovery
 - Google Maps integration
 
-</td>
-</tr>
-<tr>
-<td width="50%">
-
 ### 📊 Dashboard & Tracking
 - Comprehensive issue dashboard
 - Recent issues overview
@@ -82,8 +58,6 @@
 - Distance-based sorting
 - Quick action buttons
 
-</td>
-<td width="50%">
 
 ### 🎨 Beautiful UI
 - Dark theme with emerald accents
@@ -97,15 +71,8 @@
 - Theme customization
 - Quick logout option
 
-</td>
-</tr>
-</table>
-
----
-
 ## 🛠️ Tech Stack
 
-<div align="center">
 
 | Category | Technologies |
 |----------|---------------|
